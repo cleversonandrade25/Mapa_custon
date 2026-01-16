@@ -77,30 +77,55 @@
                 <span>Zoom:</span> <input type="range" id="zoomLevel" min="0.1" max="8" step="0.1" value="1" oninput="atualizarZoom()">
             </div>
             <div class="row">
-                <input type="checkbox" id="showGrid" onchange="desenhar()" checked> Grade | 
-                Espaço: <input type="range" id="gridStep" min="30" max="400" value="100" oninput="desenhar()">
+                <input type="checkbox" id="showGrid" onchange="desenhar()" checked> Grade Ativa
             </div>
         </div>
 
         <div class="group">
-            <label>🏠 Marcadores</label>
+            <label>🏠 Marcador Central</label>
             <div class="row">
-                <select id="centerIcon"><option value="📍">📍</option><option value="🏠">🏠</option><option value="🎯">🎯</option></select>
+                <input type="checkbox" id="showCenter" onchange="desenhar()" checked> <b>Habilitar</b>
                 <input type="color" id="centerColor" value="#ff0000" oninput="desenhar()">
-                <input type="color" id="centerTextColor" value="#000000" oninput="desenhar()">
+            </div>
+            <div class="row">
+                <label>Ícone:</label>
+                <select id="centerIcon" onchange="desenhar()" style="flex:1">
+                    <optgroup label="Mapas">
+                        <option value="📍">📍 Pin Padrão</option>
+                        <option value="📌">📌 Tachinha</option>
+                        <option value="🚩">🚩 Bandeira</option>
+                        <option value="🎯">🎯 Alvo</option>
+                        <option value="⭕">⭕ Círculo</option>
+                    </optgroup>
+                    <optgroup label="Imóveis/Arquitetura">
+                        <option value="🏠">🏠 Casa</option>
+                        <option value="🏢">🏢 Prédio</option>
+                        <option value="🏨">🏨 Hotel</option>
+                        <option value="🏭">🏭 Indústria</option>
+                        <option value="🏗️">🏗️ Construção</option>
+                    </optgroup>
+                    <optgroup label="Negócios">
+                        <option value="🛒">🛒 Loja</option>
+                        <option value="🍴">🍴 Restaurante</option>
+                        <option value="⛽">⛽ Posto</option>
+                        <option value="🏦">🏦 Banco</option>
+                    </optgroup>
+                </select>
             </div>
             <input type="text" id="centerLabel" placeholder="Legenda do centro" oninput="desenhar()">
-            <div class="row" style="margin-top:5px">
-                <button class="btn-outline" onclick="ativarModoMarcador()" id="btnAddMarker">MARCAR NO MAPA</button>
-                <button class="btn-outline" onclick="limparMarcadores()">LIMPAR</button>
+            <div class="row">
+                <span>Cor Texto:</span> <input type="color" id="centerTextColor" value="#000000" oninput="desenhar()">
             </div>
         </div>
 
         <div class="group">
             <label>⭕ Isócronas</label>
             <div class="row">
-                <input type="checkbox" id="showTimeRings" onchange="desenhar()" checked>
+                <input type="checkbox" id="showTimeRings" onchange="desenhar()" checked> Exibir
                 <input type="color" id="ringColor" value="#999999" oninput="desenhar()">
+            </div>
+            <div class="row">
+                <span>Estilo:</span>
                 <select id="ringStyle" onchange="desenhar()">
                     <option value="dashed">Tracejado</option>
                     <option value="solid">Sólido</option>
@@ -109,14 +134,13 @@
             <div class="row">
                 <span>Anéis:</span><input type="number" id="ringCount" value="3" style="width:35px" oninput="desenhar()">
                 <span>Min:</span><input type="number" id="ringInterval" value="5" style="width:35px" oninput="desenhar()">
-                <span>Vel:</span><input type="number" id="ringSpeed" value="80" style="width:50px" oninput="desenhar()">
             </div>
         </div>
 
         <div class="group">
             <label>💾 Exportação HD e Vetor (SVG)</label>
             <div class="row">
-                <span>Res. PNG:</span>
+                <span>PNG (Px):</span>
                 <input type="number" id="exportPx" value="3000" style="width: 70px;">
                 <select id="exportFormat" onchange="ajustarProporcao()" style="width: 80px;">
                     <option value="free">Livre</option>
@@ -194,7 +218,7 @@
                 const ovRes = await fetch(`https://overpass.kumi.systems/api/interpreter`, { method: 'POST', body: `data=${encodeURIComponent(query)}` });
                 const ovData = await ovRes.json();
                 lastData = ovData.elements; lastCoords = {lat, lon}; lastRaio = raio;
-                status.innerText = "MAPA GERADO"; desenhar(); atualizarEstat();
+                status.innerText = "SUCESSO"; desenhar(); atualizarEstat();
             } catch (e) { alert("Erro: " + e); status.innerText = "ERRO"; }
         }
 
@@ -206,37 +230,41 @@
             tCtx.save();
             if (isExport) tCtx.scale(exportScale, exportScale);
 
+            // Coleta de dados com proteção contra NULL
+            const getVal = (id) => document.getElementById(id)?.value;
+            const getCheck = (id) => document.getElementById(id)?.checked;
+
             const cfg = {
-                bg: document.getElementById('bgColor').value,
-                cMain: document.getElementById('colorMain').value,
-                cMin: document.getElementById('colorMinor').value,
-                wMain: parseFloat(document.getElementById('widthMain').value) * zoom,
-                wMin: parseFloat(document.getElementById('widthMinor').value) * zoom,
-                gCol: document.getElementById('gridColor').value,
-                gStep: parseFloat(document.getElementById('gridStep').value) * zoom,
-                rCol: document.getElementById('ringColor').value,
-                rSty: document.getElementById('ringStyle').value
+                bg: getVal('bgColor'),
+                cMain: getVal('colorMain'),
+                cMin: getVal('colorMinor'),
+                wMain: parseFloat(getVal('widthMain')) * zoom,
+                wMin: parseFloat(getVal('widthMinor')) * zoom,
+                gCol: getVal('gridColor'),
+                gStep: 100 * zoom,
+                rCol: getVal('ringColor'),
+                rSty: getVal('ringStyle')
             };
 
             tCtx.fillStyle = cfg.bg;
             tCtx.fillRect(0, 0, baseW, baseH);
 
+            const scaleFactor = (baseH / (lastRaio * 2)) * 111320 * zoom;
+
             // 1. Grade
-            if (document.getElementById('showGrid').checked) {
+            if (getCheck('showGrid')) {
                 tCtx.strokeStyle = cfg.gCol; tCtx.lineWidth = 1;
                 for(let i = (baseW/2 + offsetX) % cfg.gStep; i < baseW; i += cfg.gStep) { tCtx.beginPath(); tCtx.moveTo(i, 0); tCtx.lineTo(i, baseH); tCtx.stroke(); }
                 for(let i = (baseH/2 + offsetY) % cfg.gStep; i < baseH; i += cfg.gStep) { tCtx.beginPath(); tCtx.moveTo(0, i); tCtx.lineTo(baseW, i); tCtx.stroke(); }
             }
 
-            const scaleFactor = (baseH / (lastRaio * 2)) * 111320 * zoom;
-
             // 2. Isócronas
-            if (document.getElementById('showTimeRings').checked) {
+            if (getCheck('showTimeRings')) {
                 tCtx.strokeStyle = cfg.rCol; tCtx.lineWidth = 1.5;
                 if(cfg.rSty === 'dashed') tCtx.setLineDash([8, 8]); else tCtx.setLineDash([]);
-                const count = parseInt(document.getElementById('ringCount').value);
-                const speed = parseFloat(document.getElementById('ringSpeed').value);
-                const interval = parseInt(document.getElementById('ringInterval').value);
+                const count = parseInt(getVal('ringCount'));
+                const speed = 80;
+                const interval = parseInt(getVal('ringInterval'));
 
                 for(let i = 1; i <= count; i++) {
                     const rPx = (i * interval * speed * scaleFactor) / 111320;
@@ -278,7 +306,10 @@
                     tCtx.fillText(label, x, y + (size * 0.8 * zoom));
                 }
             };
-            drawP(lastCoords.lat, lastCoords.lon, document.getElementById('centerIcon').value, document.getElementById('centerColor').value, document.getElementById('centerTextColor').value, document.getElementById('centerLabel').value, 45);
+
+            if (getCheck('showCenter')) {
+                drawP(lastCoords.lat, lastCoords.lon, getVal('centerIcon'), getVal('centerColor'), getVal('centerTextColor'), getVal('centerLabel'), 45);
+            }
             marcadoresExtras.forEach(m => drawP(m.lat, m.lon, '📍', '#0000ff', '#000', m.label, 35));
 
             // 5. Escala
@@ -289,47 +320,33 @@
             tCtx.restore();
         }
 
-        // --- EXPORTAÇÃO SVG DEFINITIVA ---
         function baixarSVG() {
             if (!lastData) return;
+            const getVal = (id) => document.getElementById(id)?.value;
+            const getCheck = (id) => document.getElementById(id)?.checked;
             const w = canvas.width, h = canvas.height;
-            const cfg = {
-                bg: document.getElementById('bgColor').value,
-                cMain: document.getElementById('colorMain').value,
-                cMin: document.getElementById('colorMinor').value,
-                wMain: parseFloat(document.getElementById('widthMain').value) * zoom,
-                wMin: parseFloat(document.getElementById('widthMinor').value) * zoom,
-                gCol: document.getElementById('gridColor').value,
-                gStep: parseFloat(document.getElementById('gridStep').value) * zoom,
-                rCol: document.getElementById('ringColor').value,
-                rSty: document.getElementById('ringStyle').value
-            };
             const scaleF = (h / (lastRaio * 2)) * 111320 * zoom;
 
-            let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
-            s += `<rect width="100%" height="100%" fill="${cfg.bg}"/>`;
+            let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">`;
+            s += `<rect width="100%" height="100%" fill="${getVal('bgColor')}"/>`;
 
-            // Grade
-            if (document.getElementById('showGrid').checked) {
-                for(let i = (w/2 + offsetX) % cfg.gStep; i < w; i += cfg.gStep) s += `<line x1="${i}" y1="0" x2="${i}" y2="${h}" stroke="${cfg.gCol}" stroke-width="1"/>`;
-                for(let i = (h/2 + offsetY) % cfg.gStep; i < h; i += cfg.gStep) s += `<line x1="0" y1="${i}" x2="${w}" y2="${i}" stroke="${cfg.gCol}" stroke-width="1"/>`;
+            if (getCheck('showGrid')) {
+                const step = 100 * zoom;
+                for(let i = (w/2 + offsetX) % step; i < w; i += step) s += `<line x1="${i}" y1="0" x2="${i}" y2="${h}" stroke="${getVal('gridColor')}" stroke-width="1"/>`;
+                for(let i = (h/2 + offsetY) % step; i < h; i += step) s += `<line x1="0" y1="${i}" x2="${w}" y2="${i}" stroke="${getVal('gridColor')}" stroke-width="1"/>`;
             }
 
-            // Isócronas
-            if (document.getElementById('showTimeRings').checked) {
-                const dash = cfg.rSty === 'dashed' ? 'stroke-dasharray="8,8"' : '';
-                const count = parseInt(document.getElementById('ringCount').value);
-                const speed = parseFloat(document.getElementById('ringSpeed').value);
-                const interval = parseInt(document.getElementById('ringInterval').value);
+            if (getCheck('showTimeRings')) {
+                const dash = getVal('ringStyle') === 'dashed' ? 'stroke-dasharray="8,8"' : '';
+                const count = parseInt(getVal('ringCount'));
+                const interval = parseInt(getVal('ringInterval'));
                 for(let i=1; i<=count; i++) {
-                    const rPx = (i * interval * speed * scaleF) / 111320;
-                    const cx = w/2 + offsetX, cy = h/2 + offsetY;
-                    s += `<circle cx="${cx}" cy="${cy}" r="${rPx}" fill="none" stroke="${cfg.rCol}" stroke-width="1.5" ${dash}/>`;
-                    s += `<text x="${cx + rPx + 5}" y="${cy}" font-family="Arial" font-size="${11*zoom}" font-weight="bold" fill="${cfg.rCol}">${i*interval}min</text>`;
+                    const rPx = (i * interval * 80 * scaleF) / 111320;
+                    s += `<circle cx="${w/2 + offsetX}" cy="${h/2 + offsetY}" r="${rPx}" fill="none" stroke="${getVal('ringColor')}" stroke-width="1.5" ${dash}/>`;
+                    s += `<text x="${w/2 + offsetX + rPx + 5}" y="${h/2 + offsetY}" font-family="Arial" font-size="${11*zoom}" fill="${getVal('ringColor')}">${i*interval}min</text>`;
                 }
             }
 
-            // Vias
             const mainTypes = ["motorway", "trunk", "primary", "secondary", "tertiary"];
             lastData.forEach(way => {
                 if(!way.geometry) return;
@@ -340,21 +357,18 @@
                     const y = h/2 + offsetY - (p.lat - lastCoords.lat) * scaleF;
                     d += (i===0 ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2);
                 });
-                s += `<path d="${d}" fill="none" stroke="${isMain ? cfg.cMain : cfg.cMin}" stroke-width="${isMain ? cfg.wMain : cfg.wMin}" stroke-linecap="round" stroke-linejoin="round"/>`;
+                s += `<path d="${d}" fill="none" stroke="${isMain ? getVal('colorMain') : getVal('colorMinor')}" stroke-width="${isMain ? parseFloat(getVal('widthMain'))*zoom : parseFloat(getVal('widthMinor'))*zoom}" stroke-linecap="round"/>`;
             });
 
-            // Marcadores e Escala
-            const cx = w/2 + offsetX, cy = h/2 + offsetY;
-            s += `<text x="${cx}" y="${cy}" font-family="Arial" font-size="${45*zoom}" text-anchor="middle" fill="${document.getElementById('centerColor').value}">${document.getElementById('centerIcon').value}</text>`;
-            if(document.getElementById('centerLabel').value) s += `<text x="${cx}" y="${cy+35*zoom}" font-family="Arial" font-size="${13*zoom}" font-weight="bold" text-anchor="middle" fill="${document.getElementById('centerTextColor').value}">${document.getElementById('centerLabel').value}</text>`;
-            
-            const sPx = (500 * scaleF) / 111320;
-            s += `<rect x="30" y="${h-30}" width="${sPx}" height="4" fill="${cfg.cMain}"/>`;
-            s += `<text x="30" y="${h-40}" font-family="Arial" font-size="13" font-weight="bold" fill="${cfg.cMain}">500m</text>`;
+            if (getCheck('showCenter')) {
+                const cx = w/2 + offsetX, cy = h/2 + offsetY;
+                s += `<text x="${cx}" y="${cy}" font-family="Arial" font-size="${45*zoom}" text-anchor="middle" fill="${getVal('centerColor')}">${getVal('centerIcon')}</text>`;
+                if(getVal('centerLabel')) s += `<text x="${cx}" y="${cy+35*zoom}" font-family="Arial" font-size="${13*zoom}" font-weight="bold" text-anchor="middle" fill="${getVal('centerTextColor')}">${getVal('centerLabel')}</text>`;
+            }
 
             s += `</svg>`;
-            const b = new Blob([s], {type: 'image/svg+xml'});
-            const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = "mapa_clever_master.svg"; a.click();
+            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([s], {type: 'image/svg+xml'}));
+            a.download = "mapa_vetor.svg"; a.click();
         }
 
         async function baixarImagem(fmt) {
@@ -369,12 +383,11 @@
         }
 
         function baixarJSON() {
-            const d = { config: { centro: lastCoords, raio: lastRaio }, vias: lastData };
+            const d = { metadata: { centro: lastCoords, raio: lastRaio }, vias: lastData };
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], {type: 'application/json'}));
             a.download = "mapa_data.json"; a.click();
         }
 
-        // --- INTERAÇÕES ---
         canvas.addEventListener('mousedown', e => { isDragging = true; lastMousePos = {x: e.clientX, y: e.clientY}; });
         window.addEventListener('mousemove', e => {
             if (isDragging) {
@@ -406,7 +419,7 @@
             }
             desenhar();
         }
-        function atualizarEstat() { infoMap.innerHTML = `Vias: ${lastData.length}<br>Lat: ${lastCoords.lat.toFixed(5)}<br>Lon: ${lastCoords.lon.toFixed(5)}`; }
+        function atualizarEstat() { infoMap.innerHTML = `Vias: ${lastData?.length || 0}<br>Lat: ${lastCoords?.lat.toFixed(5)}<br>Lon: ${lastCoords?.lon.toFixed(5)}`; }
         window.addEventListener('resize', ajustarProporcao);
         ajustarProporcao();
     </script>
